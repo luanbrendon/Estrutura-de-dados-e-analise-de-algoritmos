@@ -1,161 +1,182 @@
 import tkinter as tk
 from tkinter import messagebox
 import random
+
 from collections import deque
 
-# Cria baralho
-def criar_baralho():
-    naipes = ['♥', '♦', '♣', '♠']
-    valores = ['A'] + [str(n) for n in range(2, 11)] + ['J', 'Q', 'K']
-    baralho = [f"{valor}{naipe}" for naipe in naipes for valor in valores]
-    random.shuffle(baralho)
-    return baralho
-
-# Jogador
 class Jogador:
     def __init__(self, nome):
         self.nome = nome
         self.mao = []
-        self.historico_acoes = []
 
-    def comprar(self, origem, pilha_descarte=None):
-        if origem:
-            carta = origem.pop()
-            self.mao.append(carta)
-            self.historico_acoes.append(('comprar', carta))
-            return carta
-        elif pilha_descarte:
-            carta = pilha_descarte.pop()
-            self.mao.append(carta)
-            self.historico_acoes.append(('comprar_descarte', carta))
-            return carta
-        return None
+    def comprar(self, baralho=None, pilha_descarte=None):
+        if pilha_descarte:
+            self.mao.append(pilha_descarte.pop())
+        elif baralho:
+            self.mao.append(baralho.pop())
 
     def descartar(self, carta, pilha_descarte):
-        if carta in self.mao:
-            self.mao.remove(carta)
-            pilha_descarte.append(carta)
-            self.historico_acoes.append(('descartar', carta))
-            return True
+        self.mao.remove(carta)
+        pilha_descarte.append(carta)
+
+    def pode_bater(self):
+        return verificar_mao_valida(self.mao)
+
+def criar_baralho():
+    naipes = ['♠', '♥', '♦', '♣']
+    valores = ['A'] + [str(n) for n in range(2, 11)] + ['J', 'Q', 'K']
+    return [f"{v}{n}" for v in valores for n in naipes]
+
+def verificar_mao_valida(mao):
+    if len(mao) != 9:
         return False
+    combinacoes = encontrar_combinacoes(mao)
+    return sum(len(c) for c in combinacoes) == 9
 
-    def desfazer(self, pilha_descarte):
-        if not self.historico_acoes:
-            return "Sem ações para desfazer!"
-        acao, carta = self.historico_acoes.pop()
-        if acao.startswith('comprar'):
-            self.mao.remove(carta)
-            return f"Desfez compra de {carta}"
-        elif acao == 'descartar':
-            self.mao.append(carta)
-            pilha_descarte.pop()
-            return f"Desfez descarte de {carta}"
+def encontrar_combinacoes(mao):
+    from collections import Counter
+    
+    valores_ordem = {'A':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7,
+                     '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13}
 
-    def venceu(self):
-        # Simples: mão vazia ou formada só por trincas/sequências
-        if len(self.mao) == 0:
-            return True
+    combinacoes = []
+    mao_restante = mao[:]
 
-        # Verifica trincas ou sequências
-        cartas = sorted(self.mao, key=lambda x: x[:-1])
-        return self.check_combinacoes(cartas)
+    while True:
+        # Trinca
+        cont = Counter([c[:-1] for c in mao_restante])
+        trinca = [v for v, cnt in cont.items() if cnt >= 3]
+        if trinca:
+            grupo = [c for c in mao_restante if c[:-1] == trinca[0]][:3]
+            combinacoes.append(grupo)
+            for c in grupo:
+                mao_restante.remove(c)
+            continue
 
-    def check_combinacoes(self, cartas):
-        # Exemplo simples: se mão tem múltiplos de 3, considera vitória
-        return len(cartas) % 3 == 0
+        # Sequência
+        for naipe in ['♠', '♥', '♦', '♣']:
+            seq = [c for c in mao_restante if c[-1] == naipe]
+            seq_valores = sorted([valores_ordem[c[:-1]] for c in seq])
 
-# Jogo com interface
-class JogoPifeGUI:
-    def __init__(self, root, nomes):
+            for i in range(len(seq_valores) - 2):
+                if seq_valores[i+1] == seq_valores[i]+1 and seq_valores[i+2] == seq_valores[i]+2:
+                    grupo = []
+                    for v in [seq_valores[i], seq_valores[i+1], seq_valores[i+2]]:
+                        for c in seq:
+                            if valores_ordem[c[:-1]] == v:
+                                grupo.append(c)
+                                seq.remove(c)
+                                break
+                    combinacoes.append(grupo)
+                    for c in grupo:
+                        mao_restante.remove(c)
+                    break
+            else:
+                continue
+            break
+        else:
+            break
+
+    return combinacoes
+
+class JogoPife:
+    def __init__(self, root):
         self.root = root
-        self.root.title("Pife Paf")
-        
+        self.root.title("Jogo de Pife")
+
         self.baralho = criar_baralho()
+        random.shuffle(self.baralho)
+
         self.pilha_descarte = []
-        self.jogadores = [Jogador(nome) for nome in nomes]
-        self.fila_turnos = deque(self.jogadores)
-        
-        for jogador in self.jogadores:
+        self.fila_jogadores = deque()
+
+        self.jogadores = [Jogador("Jogador 1"), Jogador("Jogador 2")]
+        for j in self.jogadores:
             for _ in range(9):
-                jogador.comprar(self.baralho)
+                j.comprar(self.baralho)
+            self.fila_jogadores.append(j)
 
-        self.jogador_atual = self.fila_turnos[0]
-
-        # Elementos da interface
-        self.info = tk.Label(root, text="Jogo de Pife")
-        self.info.pack()
-
-        self.mao_label = tk.Label(root, text="")
-        self.mao_label.pack()
-
-        self.descarte_label = tk.Label(root, text="")
-        self.descarte_label.pack()
-
-        self.compra_baralho_btn = tk.Button(root, text="Comprar Baralho", command=self.comprar_baralho)
-        self.compra_baralho_btn.pack()
-
-        self.compra_descarte_btn = tk.Button(root, text="Pegar Descarte", command=self.comprar_descarte)
-        self.compra_descarte_btn.pack()
-
-        self.descartar_entry = tk.Entry(root)
-        self.descartar_entry.pack()
-
-        self.descartar_btn = tk.Button(root, text="Descartar", command=self.descartar)
-        self.descartar_btn.pack()
-
-        self.desfazer_btn = tk.Button(root, text="Desfazer", command=self.desfazer)
-        self.desfazer_btn.pack()
-
-        self.status = tk.Label(root, text="")
+        self.jogador_atual = self.fila_jogadores[0]
+        self.status = tk.Label(root, text=f"{self.jogador_atual.nome}, sua vez")
         self.status.pack()
+
+        self.frame_mao = tk.Frame(root)
+        self.frame_mao.pack()
+
+        self.frame_compras = tk.Frame(root)
+        self.frame_compras.pack()
+
+        self.btn_comprar = tk.Button(self.frame_compras, text="Comprar do Baralho", command=self.comprar_baralho)
+        self.btn_comprar.pack(side='left')
+
+        self.btn_comprar_descarte = tk.Button(self.frame_compras, text="Comprar do Descarte", command=self.comprar_descarte)
+        self.btn_comprar_descarte.pack(side='left')
+
+        self.btn_bater = tk.Button(root, text="Bater", command=self.bater)
+        self.btn_bater.pack()
+
+        self.label_descarte = tk.Label(root, text="Descarte: Vazio")
+        self.label_descarte.pack()
 
         self.atualizar_interface()
 
     def atualizar_interface(self):
-        self.mao_label.config(text=f"{self.jogador_atual.nome} - Mão: {self.jogador_atual.mao}")
-        topo = self.pilha_descarte[-1] if self.pilha_descarte else "Vazio"
-        self.descarte_label.config(text=f"Topo Descarte: {topo}")
-        self.status.config(text=f"Baralho: {len(self.baralho)} cartas")
+        for widget in self.frame_mao.winfo_children():
+            widget.destroy()
 
-    def proximo_turno(self):
-        self.fila_turnos.rotate(-1)
-        self.jogador_atual = self.fila_turnos[0]
-        self.atualizar_interface()
+        for carta in self.jogador_atual.mao:
+            btn = tk.Button(self.frame_mao, text=carta, command=lambda c=carta: self.descartar(c))
+            btn.pack(side='left')
+
+        if self.pilha_descarte:
+            self.label_descarte.config(text=f"Descarte: {self.pilha_descarte[-1]}")
+        else:
+            self.label_descarte.config(text="Descarte: Vazio")
 
     def comprar_baralho(self):
+        if len(self.jogador_atual.mao) >= 10:
+            messagebox.showinfo("Aviso", "Você já comprou, descarte uma carta.")
+            return
         if self.baralho:
             self.jogador_atual.comprar(self.baralho)
+            self.status.config(text="Escolha uma carta para descartar.")
             self.atualizar_interface()
         else:
             messagebox.showinfo("Info", "Baralho vazio!")
 
     def comprar_descarte(self):
+        if len(self.jogador_atual.mao) >= 10:
+            messagebox.showinfo("Aviso", "Você já comprou, descarte uma carta.")
+            return
         if self.pilha_descarte:
             self.jogador_atual.comprar(None, self.pilha_descarte)
+            self.status.config(text="Escolha uma carta para descartar.")
             self.atualizar_interface()
         else:
             messagebox.showinfo("Info", "Descarte vazio!")
 
-    def descartar(self):
-        carta = self.descartar_entry.get()
-        if self.jogador_atual.descartar(carta, self.pilha_descarte):
-            self.atualizar_interface()
-            if self.jogador_atual.venceu():
-                messagebox.showinfo("Vitória", f"{self.jogador_atual.nome} venceu!")
-                self.root.quit()
-            else:
-                self.proximo_turno()
-        else:
-            messagebox.showerror("Erro", "Carta inválida ou não na mão.")
+    def descartar(self, carta):
+        if len(self.jogador_atual.mao) != 10:
+            messagebox.showinfo("Aviso", "Compre antes de descartar.")
+            return
 
-    def desfazer(self):
-        msg = self.jogador_atual.desfazer(self.pilha_descarte)
-        messagebox.showinfo("Desfazer", msg)
+        self.jogador_atual.descartar(carta, self.pilha_descarte)
+        self.proximo_turno()
+
+    def bater(self):
+        if self.jogador_atual.pode_bater():
+            messagebox.showinfo("Vitória!", f"{self.jogador_atual.nome} bateu e venceu!")
+            self.root.quit()
+        else:
+            messagebox.showinfo("Erro", "Sua mão não está completa para bater.")
+
+    def proximo_turno(self):
+        self.fila_jogadores.rotate(-1)
+        self.jogador_atual = self.fila_jogadores[0]
+        self.status.config(text=f"{self.jogador_atual.nome}, sua vez")
         self.atualizar_interface()
 
-# Executa o jogo
-if __name__ == "__main__":
+if __name__ == '__main__':
     root = tk.Tk()
-    nomes = ["Jogador 1", "Jogador 2"]
-    jogo = JogoPifeGUI(root, nomes)
+    jogo = JogoPife(root)
     root.mainloop()
