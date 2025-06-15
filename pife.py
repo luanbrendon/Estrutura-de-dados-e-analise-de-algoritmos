@@ -268,9 +268,31 @@ class JogoPife:
         self.proximo_turno()
 
     def bater(self):
-        if self.jogador_atual.pode_bater():
-            messagebox.showinfo("Vitória!", f"{self.jogador_atual.nome} bateu e venceu!")
-            self.root.quit()
+        combinacoes = encontrar_combinacoes(self.jogador_atual.mao)
+        if sum(len(c) for c in combinacoes) == 9:
+            # Limpa a tela de jogo
+            for widget in self.root.winfo_children():
+                widget.destroy()
+
+            lbl_vitoria = tk.Label(self.root, text=f"{self.jogador_atual.nome} bateu e venceu!", font=("Arial", 20),
+                                   bg="#006400", fg="white")
+            lbl_vitoria.pack(pady=20)
+
+            frame_combinacoes = tk.Frame(self.root, bg="#006400")
+            frame_combinacoes.pack(pady=10)
+
+            for grupo in combinacoes:
+                grupo_frame = tk.Frame(frame_combinacoes, bg="#006400", bd=2, relief="groove")
+                grupo_frame.pack(side='left', padx=10)
+                for carta in grupo:
+                    img = self.carregar_imagem_carta(carta)
+                    if img:
+                        lbl = tk.Label(grupo_frame, image=img, bg="#006400")
+                        lbl.image = img
+                        lbl.pack(side='left', padx=2)
+
+            btn_sair = tk.Button(self.root, text="Encerrar Jogo", font=("Arial", 14), command=self.root.quit)
+            btn_sair.pack(pady=20)
         else:
             messagebox.showinfo("Erro", "Sua mão não está completa para bater.")
 
