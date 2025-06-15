@@ -6,6 +6,7 @@ import os
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import pygame
 
+
 # Inicializa o mixer do pygame
 pygame.mixer.init()
 pygame.mixer.music.load("musica/jazz_background.mp3")
@@ -36,7 +37,6 @@ def gerar_imagens_cartas(pasta="cartas"):
 
             img.save(os.path.join(pasta, f"{carta}.png"))
 
-# Funções do jogo
 class Jogador:
     def __init__(self, nome):
         self.nome = nome
@@ -108,14 +108,19 @@ def encontrar_combinacoes(mao):
 
     return combinacoes
 
-# Classe principal do jogo
 class JogoPife:
     def __init__(self, root):
-        gerar_imagens_cartas    ()
+        gerar_imagens_cartas()
 
         self.root = root
         self.root.title("Jogo de Pife")
-        self.root.geometry("1000x600")
+        largura = 1280
+        altura = 720
+        largura_tela = self.root.winfo_screenwidth()
+        altura_tela = self.root.winfo_screenheight()
+        x = (largura_tela // 2) - (largura // 2)
+        y = (altura_tela // 2) - (altura // 2)
+        self.root.geometry(f"{largura}x{altura}+{x}+{y}")
         self.root.configure(bg="#006400")
 
         self.ctrl_pressed = False
@@ -127,7 +132,6 @@ class JogoPife:
 
         self.pilha_descarte = []
         self.fila_jogadores = deque()
-
         self.jogadores = [Jogador("Jogador 1"), Jogador("Jogador 2")]
         for j in self.jogadores:
             for _ in range(9):
@@ -136,8 +140,13 @@ class JogoPife:
 
         self.jogador_atual = self.fila_jogadores[0]
 
-        self.status = tk.Label(root, text=f"{self.jogador_atual.nome}, sua vez", font=("Arial", 14), bg="#006400", fg="white")
-        self.status.pack(pady=10)
+        self.status = tk.Label(
+            root,
+            font=("Arial", 16, "bold"),
+            bg="#006400"
+        )
+        self.status.pack(pady=30)
+        self.atualizar_status("Escolha uma carta para comprar.")
 
         self.mesa_frame = tk.Frame(root, bg="#006400")
         self.mesa_frame.pack(pady=10)
@@ -148,14 +157,37 @@ class JogoPife:
         self.frame_compras = tk.Frame(root, bg="#006400")
         self.frame_compras.pack(pady=10)
 
-        self.btn_comprar = tk.Button(self.frame_compras, text="Comprar do Baralho", command=self.comprar_baralho)
-        self.btn_comprar.pack(side='left', padx=5)
+        self.frame_btn_baralho = tk.Frame(self.frame_compras, highlightthickness=3, highlightbackground="#006400")
+        self.frame_btn_baralho.pack(side='left', padx=10)
 
-        self.btn_comprar_descarte = tk.Button(self.frame_compras, text="Comprar do Descarte", command=self.comprar_descarte)
-        self.btn_comprar_descarte.pack(side='left', padx=5)
+        self.btn_comprar = tk.Button(self.frame_btn_baralho, text="Comprar do Baralho", command=self.comprar_baralho,
+                                     font=("Arial", 12, "bold"), padx=20, pady=10, relief="raised", bd=3)
+        self.btn_comprar.pack()
 
-        self.btn_bater = tk.Button(root, text="Bater", command=self.bater)
-        self.btn_bater.pack(pady=5)
+        self.btn_comprar.bind("<Enter>", lambda e: self.frame_btn_baralho.config(highlightbackground="black"))
+        self.btn_comprar.bind("<Leave>", lambda e: self.frame_btn_baralho.config(highlightbackground="#006400"))
+
+        self.frame_btn_descarte = tk.Frame(self.frame_compras, highlightthickness=3, highlightbackground="#006400")
+        self.frame_btn_descarte.pack(side='left', padx=10)
+
+        self.btn_comprar_descarte = tk.Button(self.frame_btn_descarte, text="Comprar do Descarte",
+                                              command=self.comprar_descarte,
+                                              font=("Arial", 12, "bold"), padx=20, pady=10, relief="raised", bd=3)
+        self.btn_comprar_descarte.pack()
+
+        self.btn_comprar_descarte.bind("<Enter>", lambda e: self.frame_btn_descarte.config(highlightbackground="black"))
+        self.btn_comprar_descarte.bind("<Leave>",
+                                       lambda e: self.frame_btn_descarte.config(highlightbackground="#006400"))
+
+        self.frame_btn_bater = tk.Frame(root, highlightthickness=3, highlightbackground="#006400")
+        self.frame_btn_bater.pack(pady=10)
+
+        self.btn_bater = tk.Button(self.frame_btn_bater, text="Bater", command=self.bater,
+                                   font=("Arial", 12, "bold"), padx=20, pady=10, relief="raised", bd=3)
+        self.btn_bater.pack()
+
+        self.btn_bater.bind("<Enter>", lambda e: self.frame_btn_bater.config(highlightbackground="black"))
+        self.btn_bater.bind("<Leave>", lambda e: self.frame_btn_bater.config(highlightbackground="#006400"))
 
         self.selecoes = {}
         self.grupo_atual = 0
@@ -163,6 +195,10 @@ class JogoPife:
         self.cores_por_grupo = {}
 
         self.atualizar_interface()
+
+    def atualizar_status(self, mensagem):
+        cor = "blue" if self.jogador_atual.nome == "Jogador 1" else "red"
+        self.status.config(text=f"{self.jogador_atual.nome}: {mensagem}", fg=cor)
 
     def nova_cor(self):
         while True:
@@ -239,7 +275,7 @@ class JogoPife:
             return
         if self.baralho:
             self.jogador_atual.comprar(self.baralho)
-            self.status.config(text="Escolha uma carta para descartar.")
+            self.atualizar_status("Escolha uma carta para descartar.")
             self.atualizar_interface()
         else:
             messagebox.showinfo("Info", "Baralho vazio!")
@@ -250,7 +286,7 @@ class JogoPife:
             return
         if self.pilha_descarte:
             self.jogador_atual.comprar(None, self.pilha_descarte)
-            self.status.config(text="Escolha uma carta para descartar.")
+            self.atualizar_status("Escolha uma carta para descartar.")
             self.atualizar_interface()
         else:
             messagebox.showinfo("Info", "Descarte vazio!")
@@ -259,6 +295,11 @@ class JogoPife:
         if len(self.jogador_atual.mao) != 10:
             messagebox.showinfo("Aviso", "Compre antes de descartar.")
             return
+
+        confirmar = messagebox.askyesno("Confirmar Descarte", f"Deseja realmente descartar a carta {carta}?")
+        if not confirmar:
+            return
+
 
         self.jogador_atual.descartar(carta, self.pilha_descarte)
         self.selecoes.clear()
@@ -270,12 +311,15 @@ class JogoPife:
     def bater(self):
         combinacoes = encontrar_combinacoes(self.jogador_atual.mao)
         if sum(len(c) for c in combinacoes) == 9:
-            # Limpa a tela de jogo
             for widget in self.root.winfo_children():
                 widget.destroy()
 
-            lbl_vitoria = tk.Label(self.root, text=f"{self.jogador_atual.nome} bateu e venceu!", font=("Arial", 20),
-                                   bg="#006400", fg="white")
+            lbl_vitoria = tk.Label(self.root,
+                                   text=f"{self.jogador_atual.nome} bateu e venceu!",
+                                   font=("Arial", 20),
+                                   bg="#006400",
+                                   fg="#FFD700"
+                                   )
             lbl_vitoria.pack(pady=20)
 
             frame_combinacoes = tk.Frame(self.root, bg="#006400")
@@ -291,15 +335,24 @@ class JogoPife:
                         lbl.image = img
                         lbl.pack(side='left', padx=2)
 
-            btn_sair = tk.Button(self.root, text="Encerrar Jogo", font=("Arial", 14), command=self.root.quit)
-            btn_sair.pack(pady=20)
+            self.frame_btn_sair = tk.Frame(self.root, highlightthickness=3, highlightbackground="#006400")
+            self.frame_btn_sair.pack(pady=20)
+
+            self.btn_sair = tk.Button(self.frame_btn_sair, text="Encerrar Jogo",
+                                      command=self.root.quit,
+                                      font=("Arial", 12, "bold"), padx=20, pady=10, relief="raised", bd=3)
+            self.btn_sair.pack()
+
+            self.btn_sair.bind("<Enter>", lambda e: self.frame_btn_sair.config(highlightbackground="black"))
+            self.btn_sair.bind("<Leave>", lambda e: self.frame_btn_sair.config(highlightbackground="#006400"))
+
         else:
             messagebox.showinfo("Erro", "Sua mão não está completa para bater.")
 
     def proximo_turno(self):
         self.fila_jogadores.rotate(-1)
         self.jogador_atual = self.fila_jogadores[0]
-        self.status.config(text=f"{self.jogador_atual.nome}, sua vez")
+        self.atualizar_status("Escolha uma carta para comprar.")
         self.atualizar_interface()
 
 if __name__ == '__main__':
