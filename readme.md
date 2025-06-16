@@ -1,4 +1,3 @@
-MELHORE UM POUCO ESSA DOCUMENTAÇÃO
 # 🃏 Jogo de Pife - Estrutura de Dados e Análise de Algoritmos
 
 Este projeto implementa uma versão interativa do jogo **Pife** (ou Pif-Paf), usando **Python** com **Tkinter** para interface gráfica, **PIL** para geração de cartas, e **pygame** para música de fundo. Foi desenvolvido com fins didáticos na disciplina de Estrutura de Dados e Análise de Algoritmos.
@@ -73,5 +72,3 @@ A trilha sonora jazz é reproduzida em loop durante o jogo. Arquivo localizado e
 ## 📚 Créditos
 
 Projeto desenvolvido por Alvaro Wiggers, Allan Santos, Luan Brendon, Guilherme Fernandes e Thor Camara, como parte da disciplina de **Estrutura de Dados e Análise de Algoritmos**.
-
-
